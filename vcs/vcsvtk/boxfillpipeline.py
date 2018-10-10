@@ -204,6 +204,7 @@ class BoxfillPipeline(Pipeline2D):
             midx += 1
 
         self._resultDict["vtk_backend_actors"] = actors
+        self._resultDict['vtk_backend_context_area'] = area
 
         t = self._originalData1.getTime()
         if self._originalData1.ndim > 2:

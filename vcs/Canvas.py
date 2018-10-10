@@ -4032,6 +4032,9 @@ class Canvas(vcs.bestMatch):
                         nm, src = self.check_name_source(
                             None, "default", "display")
                         dn = displayplot.Dp(nm, parent=self)
+
+                    print('Storing backend kargs under display name {0}'.format(dn.name))
+
                     dn.template = arglist[2]
                     dn.g_type = arglist[3]
                     dn.g_name = arglist[4]

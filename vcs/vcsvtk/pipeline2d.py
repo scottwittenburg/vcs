@@ -359,6 +359,7 @@ class Pipeline2D(IPipeline2D):
     def _createPolyDataFilter(self):
         """This is only used when we use the grid stored in the file for all plots."""
         self._vtkPolyDataFilter = vtk.vtkDataSetSurfaceFilter()
+        self._vtkPolyDataFilter.PassThroughCellIdsOn()
         if self._hasCellData == self._needsCellData:
             self._vtkPolyDataFilter.SetInputData(self._vtkDataSet)
         elif self._hasCellData:
