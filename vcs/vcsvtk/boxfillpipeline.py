@@ -159,9 +159,13 @@ class BoxfillPipeline(Pipeline2D):
                 area.GetDrawAreaItem().AddItem(item)
 
                 if mapper is self._maskedDataMapper:
+                    area.GetDrawAreaItem().AddItem(item)
                     actors.append([item, self._maskedDataMapper, plotting_dataset_bounds])
+                    vcs2vtk.debugWriteGrid(poly, 'masked_grid_boxfill')
                 else:
                     actors.append([item, plotting_dataset_bounds])
+                    vcs2vtk.debugWriteGrid(poly, 'grid_boxfill')
+
 
             if mapper is not self._maskedDataMapper:
                 if self._gm.boxfill_type == "custom":
