@@ -16,7 +16,7 @@ import sys
 import numbers
 
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 def debugWriteGrid(grid, name):
@@ -371,6 +371,35 @@ def setInfToValid(geoPoints, ghost):
             ghost.SetValue(i, vtk.vtkDataSetAttributes.HIDDENPOINT)
     return anyInfinity
 
+def printGridAttrsInfo(grid, celldata):
+    cellData = grid.GetCellData()
+    pointData = grid.GetPointData()
+    numGridPoints = grid.GetNumberOfPoints()
+    numGridCells = grid.GetNumberOfCells()
+    numCellArrays = cellData.GetNumberOfArrays()
+    numPointArrays = pointData.GetNumberOfArrays()
+
+    print('Grid info:')
+    print('  {0} points, {1} cells'.format(numGridPoints, numGridCells))
+    print('  {0} point arrays, {1} cell arrays'.format(numPointArrays, numCellArrays))
+
+    if numCellArrays > 0:
+        print('    cell arrays:')
+        for idx in range(numCellArrays):
+            array = cellData.GetArray(idx)
+            name = array.GetName()
+            numComps = array.GetNumberOfComponents()
+            numTuples = array.GetNumberOfTuples()
+            print('      {0} has {1} tuples of {2} components'.format(name, numTuples, numComps))
+
+    if numPointArrays > 0:
+        print('    point arrays:')
+        for idx in range(numPointArrays):
+            array = pointData.GetArray(idx)
+            name = array.GetName()
+            numComps = array.GetNumberOfComponents()
+            numTuples = array.GetNumberOfTuples()
+            print('      {0} has {1} tuples of {2} components'.format(name, numTuples, numComps))
 
 def removeHiddenPointsOrCells(grid, celldata=False):
     """Remove hidden points or cells from the input VTK polydata.
@@ -386,6 +415,10 @@ def removeHiddenPointsOrCells(grid, celldata=False):
 
     # Since this method involves deleting points or cells from the polydata, the
     # first step is to build "upward" links from points to cells.
+    location = 'CELLS' if celldata else 'POINTS'
+    print('Before removing hidden {0}'.format(location))
+    printGridAttrsInfo(grid, celldata)
+
     grid.BuildLinks()
 
     ghost = grid.GetCellGhostArray() if celldata else grid.GetPointGhostArray()
@@ -418,8 +451,13 @@ def removeHiddenPointsOrCells(grid, celldata=False):
                         minVectorNorm = vectorNorm
     hiddenScalars = False
     hiddenVectors = False
+
+    countHidden = 0
+
     for i in range(num):
         if (ghost.GetValue(i) & hidden):
+            countHidden += 1
+            # print('  {0}[{1}] hidden'.format(location, i))
             if not celldata:
                 cells = vtk.vtkIdList()
                 # point hidden, remove all cells used by this point
@@ -436,6 +474,9 @@ def removeHiddenPointsOrCells(grid, celldata=False):
                     vectors.SetTypedTuple(i, minVector)
             else:
                 grid.DeleteCell(i)
+
+    print('There were {0} hidden {1}'.format(countHidden, location))
+
     # SetValue does not call modified - we'll have to call it after all calls.
     if (hiddenScalars):
         scalars.Modified()
@@ -451,6 +492,8 @@ def removeHiddenPointsOrCells(grid, celldata=False):
     attributes.GetArray("GlobalIds", globalIdsIndex)
     attributes.SetActiveAttribute(globalIdsIndex, attributes.GLOBALIDS)
 
+    print('After removing hidden {0}'.format(location))
+    printGridAttrsInfo(grid, celldata)
 
 def genGrid(data1, data2, gm, deep=True, grid=None, geo=None, genVectors=False,
             dualGrid=False):
@@ -2061,24 +2104,39 @@ def getProjectedBoundsForWorldCoords(wc, proj, subdiv=50):
     return xformPts.GetBounds()
 
 
-def prepLine(plotsContext, line, geoBounds=None, cmap=None):
-    numDivisions = 50
-    if vcs.elements["projection"][line.projection].type == "aeqd":
-        numDivisions = 100
+def getNumberOfWCSubdivs(projType):
+    if projType == 'linear':
+        return 1
+    if projType == 'aeqd':
+        return 1000
+    if projType not in round_projections:
+        return 250
+    return 25
 
-    # print('Inside prepLine, about to get projected bounds for world coordinates')
+
+def adjustWorldCoordBounds(wc, projType):
+    linewc = [c for c in wc]
+
+    if projType == "aeqd":
+        epsilon = 1
+        if linewc[0] <= -180:
+            linewc[0] = -180 + epsilon
+        if linewc[1] >= 180:
+            linewc[1] = 180 - epsilon
+
+    return linewc
+
+prepLinesCount = 0
+
+def prepLine(plotsContext, line, geoBounds=None, cmap=None):
+    global prepLinesCount
+
+    projType = vcs.elements["projection"][line.projection].type
+    NPointsInterp = getNumberOfWCSubdivs(projType)
+    linewc = adjustWorldCoordBounds(line.worldcoordinate, projType)
 
     projBounds = getProjectedBoundsForWorldCoords(
-        line.worldcoordinate, line.projection, subdiv=numDivisions)
-
-    # print('prepping a line')
-    # print('  projection type = {0}'.format(vcs.elements["projection"][line.projection].type))
-    # print('  wc = {0}'.format(line.worldcoordinate))
-    # print('  projected bounds = {0}'.format(projBounds))
-    # print('  vp = {0}'.format(line.viewport))
-    # print('  coords')
-    # print('    x = {0}'.format(line.x))
-    # print('    y = {0}'.format(line.y))
+        linewc, line.projection, subdiv=NPointsInterp)
 
     number_lines = prepPrimitive(line)
     if number_lines == 0:
@@ -2121,7 +2179,7 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
             while len(a) < number_points:
                 a.append(a[-1])
 
-        if vcs.elements["projection"][line.projection].type == "linear":
+        if projType == "linear":
             for j in range(number_points):
                 pts.InsertNextPoint(x[j], y[j], 0.)
             n2 = number_points - 1
@@ -2129,11 +2187,6 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
             pts.InsertNextPoint(x[0], y[0], 0.)
             n2 = 0
             for j in range(1, number_points):
-                if vcs.elements["projection"][
-                        line.projection].type in round_projections:
-                    NPointsInterp = 50
-                else:
-                    NPointsInterp = 25
                 for i in range(1, NPointsInterp + 1):
                     if x[j] != x[j - 1]:
                         tmpx = x[j - 1] + \
@@ -2158,7 +2211,7 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
         pts, _, linesPoly, colors = line_data[(t, w)]
 
         linesPoly.GetCellData().SetScalars(colors)
-        geoTransform, pts = project(pts, line.projection, line.worldcoordinate)
+        geoTransform, pts = project(pts, line.projection, linewc)
         linesPoly.SetPoints(pts)
 
         view = plotsContext.contextView
@@ -2176,6 +2229,7 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
         if doAdjustBounds:
             wc = adjustBounds(wc, boundsAdjustment, boundsAdjustment)
         rect = vtk.vtkRectd(wc[0], wc[2], wc[1] - wc[0], wc[3] - wc[2])
+        # rect = vtk.vtkRectd(-19759424.0, -18318742.0, 39518848.0, 36637484.0)
 
         [renWinWidth, renWinHeight] = plotsContext.renWin.GetSize()
         if doAdjustBounds:
@@ -2204,6 +2258,20 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
         item.SetScalarMode(vtk.VTK_SCALAR_MODE_USE_CELL_DATA)
         item.SetMappedColors(colors)
         area.GetDrawAreaItem().AddItem(item)
+
+        debugMsg('In prepLines')
+        debugMsg('  line vp: {0}'.format(line.viewport))
+        debugMsg('  line wc: {0}'.format(line.worldcoordinate))
+        debugMsg('  adjusted line wc: {0}'.format(linewc))
+        debugMsg('  actual polydata bounds: {0}'.format(linesPoly.GetBounds()))
+        debugMsg('  projected bounds: {0}'.format(projBounds))
+        debugMsg('  computed draw area bounds: {0}'.format(rect))
+
+        if DEBUG_MODE:
+            gridFileName = 'lines_{0}'.format(prepLinesCount)
+            debugWriteGrid(linesPoly, gridFileName)
+            print('    wrote {0}.vtp'.format(gridFileName))
+            prepLinesCount += 1
 
     return actors
 

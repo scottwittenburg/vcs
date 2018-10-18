@@ -124,8 +124,12 @@ class IsofillPipeline(Pipeline2D):
         area = vtk.vtkInteractiveArea()
         view.GetScene().AddItem(area)
 
+        projType = vcs.elements["projection"][self._gm.projection].type
+        NPointsInterp = vcs2vtk.getNumberOfWCSubdivs(projType)
+        plotwc = vcs2vtk.adjustWorldCoordBounds(plotting_dataset_bounds, projType)
+
         adjusted_plotting_bounds = vcs2vtk.getProjectedBoundsForWorldCoords(
-            plotting_dataset_bounds, self._gm.projection)
+            plotwc, self._gm.projection, subdiv=NPointsInterp)
         drawAreaBounds = vcs2vtk.computeDrawAreaBounds(adjusted_plotting_bounds)
 
         [renWinWidth, renWinHeight] = self._context().renWin.GetSize()
@@ -135,6 +139,18 @@ class IsofillPipeline(Pipeline2D):
                             int(round((vp[3] - vp[2]) * renWinHeight)))
 
         vcs2vtk.configureContextArea(area, drawAreaBounds, geom)
+
+        vcs2vtk.debugMsg('isofillpipeline')
+        vcs2vtk.debugMsg('  viewport = {0}'.format(vp))
+        vcs2vtk.debugMsg('  projection type = {0}'.format(vcs.elements["projection"][self._gm.projection].type))
+        vcs2vtk.debugMsg('  vtkGeoTransform = {0}'.format(self._vtkGeoTransform.GetClassName() if self._vtkGeoTransform else 'None'))
+        vcs2vtk.debugMsg('  plotting bounds = {0}'.format(plotting_dataset_bounds))
+        vcs2vtk.debugMsg('  graphics method bounds = [{0}, {1}, {2}, {3}]'.format(self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2))
+        vcs2vtk.debugMsg('  dataset bounds = {0}'.format(self._vtkDataSetBounds))
+        vcs2vtk.debugMsg('  dataset bounds (no mask) = {0}'.format(self._vtkDataSetBoundsNoMask))
+        vcs2vtk.debugMsg('  draw area bounds = {0}'.format(drawAreaBounds))
+        vcs2vtk.debugMsg('  scale: [xscale, yscale] = [{0}, {1}]'.format(self._context_xScale, self._context_yScale))
+        vcs2vtk.debugMsg('  [flipX, flipY] = [{0}, {1}]'.format(self._context_flipX, self._context_flipY))
 
         for mapper in mappers:
             act = vtk.vtkActor()
