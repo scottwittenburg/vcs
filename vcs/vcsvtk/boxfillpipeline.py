@@ -67,7 +67,8 @@ class BoxfillPipeline(Pipeline2D):
             self._plotInternalCustomBoxfill()
 
         if self._maskedDataMapper is not None:
-            self._mappers.insert(0, self._maskedDataMapper)
+            # self._mappers.insert(0, self._maskedDataMapper)
+            self._mappers.append(self._maskedDataMapper)
 
         plotting_dataset_bounds = self.getPlottingBounds()
         x1, x2, y1, y2 = plotting_dataset_bounds

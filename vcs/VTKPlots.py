@@ -877,8 +877,11 @@ class VTKVCSBackend(object):
                     plotting_bounds = kargs.get(
                         "plotting_dataset_bounds", None)
                     if plotting_bounds:
+                        projType = vcs.elements["projection"][tt.projection].type
+                        linewc = vcs2vtk.adjustWorldCoordBounds(plotting_bounds, projType)
+                        numDivs = vcs2vtk.getNumberOfWCSubdivs(projType)
                         newbounds = vcs2vtk.getProjectedBoundsForWorldCoords(
-                            plotting_bounds, tt.projection)
+                            linewc, tt.projection, subdiv=numDivs)
                         if all([not math.isinf(b) for b in newbounds]):
                             bounds = newbounds
 

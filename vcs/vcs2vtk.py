@@ -2101,19 +2101,39 @@ def getProjectedBoundsForWorldCoords(wc, proj, subdiv=50):
 
     return xformPts.GetBounds()
 
-prepLinesCount = 0
+
+def getNumberOfWCSubdivs(projType):
+    if projType == 'linear':
+        return 1
+    if projType == 'aeqd':
+        return 1000
+    if projType not in round_projections:
+        return 250
+    return 25
+
+
+def adjustWorldCoordBounds(wc, projType):
+    linewc = [c for c in wc]
+
+    if projType == "aeqd":
+        epsilon = 1
+        if linewc[0] < -180:
+            linewc[0] = -180 + epsilon
+        if linewc[1] > 180:
+            linewc[1] = 180 - epsilon
+
+    return linewc
+
 
 def prepLine(plotsContext, line, geoBounds=None, cmap=None):
-    global prepLinesCount
-
-    numDivisions = 50
-    if vcs.elements["projection"][line.projection].type == "aeqd":
-        numDivisions = 1000
+    projType = vcs.elements["projection"][line.projection].type
+    NPointsInterp = getNumberOfWCSubdivs(projType)
+    linewc = adjustWorldCoordBounds(line.worldcoordinate, projType)
 
     # print('Inside prepLine, about to get projected bounds for world coordinates')
 
     projBounds = getProjectedBoundsForWorldCoords(
-        line.worldcoordinate, line.projection, subdiv=numDivisions)
+        linewc, line.projection, subdiv=NPointsInterp)
 
     # if prepLinesCount == 1:   # asterisk (y ticks)
     #     projBounds = [-630154, 630154, -10404000.0, -9599780.0]
@@ -2172,7 +2192,7 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
             while len(a) < number_points:
                 a.append(a[-1])
 
-        if vcs.elements["projection"][line.projection].type == "linear":
+        if projType == "linear":
             for j in range(number_points):
                 pts.InsertNextPoint(x[j], y[j], 0.)
             n2 = number_points - 1
@@ -2180,11 +2200,6 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
             pts.InsertNextPoint(x[0], y[0], 0.)
             n2 = 0
             for j in range(1, number_points):
-                if vcs.elements["projection"][
-                        line.projection].type in round_projections:
-                    NPointsInterp = 500
-                else:
-                    NPointsInterp = 250
                 for i in range(1, NPointsInterp + 1):
                     if x[j] != x[j - 1]:
                         tmpx = x[j - 1] + \
@@ -2209,7 +2224,7 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
         pts, _, linesPoly, colors = line_data[(t, w)]
 
         linesPoly.GetCellData().SetScalars(colors)
-        geoTransform, pts = project(pts, line.projection, line.worldcoordinate)
+        geoTransform, pts = project(pts, line.projection, linewc)
         linesPoly.SetPoints(pts)
 
         view = plotsContext.contextView
@@ -2251,16 +2266,18 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
         item.SetMappedColors(colors)
         area.GetDrawAreaItem().AddItem(item)
 
-        gridFileName = 'lines_{0}'.format(prepLinesCount)
-        debugWriteGrid(linesPoly, gridFileName)
-        print('In prepLines, wrote {0}.vtp'.format(gridFileName))
+        # gridFileName = 'lines_{0}'.format(prepLinesCount)
+        # debugWriteGrid(linesPoly, gridFileName)
+        # print('In prepLines, wrote {0}.vtp'.format(gridFileName))
+        print('In prepLines')
         print('  line vp: {0}'.format(line.viewport))
         print('  line wc: {0}'.format(line.worldcoordinate))
+        print('  adjusted line wc: {0}'.format(linewc))
         print('  actual polydata bounds: {0}'.format(linesPoly.GetBounds()))
         print('  projected bounds: {0}'.format(projBounds))
         print('  computed draw area bounds: {0}'.format(rect))
 
-    prepLinesCount += 1
+    # prepLinesCount += 1
 
     return actors
 
