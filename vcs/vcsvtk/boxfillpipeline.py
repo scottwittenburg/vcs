@@ -109,6 +109,18 @@ class BoxfillPipeline(Pipeline2D):
 
         vcs2vtk.configureContextArea(area, drawAreaBounds, geom)
 
+        vcs2vtk.debugMsg('boxfillpipeline')
+        vcs2vtk.debugMsg('  viewport = {0}'.format(vp))
+        vcs2vtk.debugMsg('  projection type = {0}'.format(vcs.elements["projection"][self._gm.projection].type))
+        vcs2vtk.debugMsg('  vtkGeoTransform = {0}'.format(self._vtkGeoTransform.GetClassName() if self._vtkGeoTransform else 'None'))
+        vcs2vtk.debugMsg('  plotting bounds = {0}'.format(plotting_dataset_bounds))
+        vcs2vtk.debugMsg('  graphics method bounds = [{0}, {1}, {2}, {3}]'.format(self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2))
+        vcs2vtk.debugMsg('  dataset bounds = {0}'.format(self._vtkDataSetBounds))
+        vcs2vtk.debugMsg('  dataset bounds (no mask) = {0}'.format(self._vtkDataSetBoundsNoMask))
+        vcs2vtk.debugMsg('  draw area bounds = {0}'.format(drawAreaBounds))
+        vcs2vtk.debugMsg('  scale: [xscale, yscale] = [{0}, {1}]'.format(self._context_xScale, self._context_yScale))
+        vcs2vtk.debugMsg('  [flipX, flipY] = [{0}, {1}]'.format(self._context_flipX, self._context_flipY))
+
         midx = 0
 
         for mapper in self._mappers:
@@ -160,10 +172,11 @@ class BoxfillPipeline(Pipeline2D):
                 area.GetDrawAreaItem().AddItem(item)
 
                 if mapper is self._maskedDataMapper:
-                    area.GetDrawAreaItem().AddItem(item)
+                    # area.GetDrawAreaItem().AddItem(item)
                     actors.append([item, self._maskedDataMapper, plotting_dataset_bounds])
                     vcs2vtk.debugWriteGrid(poly, 'masked_grid_boxfill')
                 else:
+                    # area.GetDrawAreaItem().AddItem(item)
                     actors.append([item, plotting_dataset_bounds])
                     vcs2vtk.debugWriteGrid(poly, 'grid_boxfill')
 

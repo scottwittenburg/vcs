@@ -16,7 +16,7 @@ import sys
 import numbers
 
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 def debugWriteGrid(grid, name):
@@ -2117,39 +2117,24 @@ def adjustWorldCoordBounds(wc, projType):
 
     if projType == "aeqd":
         epsilon = 1
-        if linewc[0] < -180:
+        if linewc[0] <= -180:
             linewc[0] = -180 + epsilon
-        if linewc[1] > 180:
+        if linewc[1] >= 180:
             linewc[1] = 180 - epsilon
 
     return linewc
 
+prepLinesCount = 0
 
 def prepLine(plotsContext, line, geoBounds=None, cmap=None):
+    global prepLinesCount
+
     projType = vcs.elements["projection"][line.projection].type
     NPointsInterp = getNumberOfWCSubdivs(projType)
     linewc = adjustWorldCoordBounds(line.worldcoordinate, projType)
 
-    # print('Inside prepLine, about to get projected bounds for world coordinates')
-
     projBounds = getProjectedBoundsForWorldCoords(
         linewc, line.projection, subdiv=NPointsInterp)
-
-    # if prepLinesCount == 1:   # asterisk (y ticks)
-    #     projBounds = [-630154, 630154, -10404000.0, -9599780.0]
-    # elif prepLinesCount == 3: #
-    #     projBounds = [-1.99598e+7, 1.99553e+7, -17791462.0, 19906360.0]
-    # elif prepLinesCount == 4:  #
-    #     projBounds = [-17903596.0, 17903596.0, -18364780.0, 18364780.0]
-
-    # print('prepping a line')
-    # print('  projection type = {0}'.format(vcs.elements["projection"][line.projection].type))
-    # print('  wc = {0}'.format(line.worldcoordinate))
-    # print('  projected bounds = {0}'.format(projBounds))
-    # print('  vp = {0}'.format(line.viewport))
-    # print('  coords')
-    # print('    x = {0}'.format(line.x))
-    # print('    y = {0}'.format(line.y))
 
     number_lines = prepPrimitive(line)
     if number_lines == 0:
@@ -2238,6 +2223,7 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
 
         wc = adjustBounds(wc, 1.1, 1.1)
         rect = vtk.vtkRectd(wc[0], wc[2], wc[1] - wc[0], wc[3] - wc[2])
+        # rect = vtk.vtkRectd(-19759424.0, -18318742.0, 39518848.0, 36637484.0)
 
         [renWinWidth, renWinHeight] = plotsContext.renWin.GetSize()
         vp = adjustBounds(vp, 1.1, 1.1)
@@ -2266,18 +2252,19 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
         item.SetMappedColors(colors)
         area.GetDrawAreaItem().AddItem(item)
 
-        # gridFileName = 'lines_{0}'.format(prepLinesCount)
-        # debugWriteGrid(linesPoly, gridFileName)
-        # print('In prepLines, wrote {0}.vtp'.format(gridFileName))
-        print('In prepLines')
-        print('  line vp: {0}'.format(line.viewport))
-        print('  line wc: {0}'.format(line.worldcoordinate))
-        print('  adjusted line wc: {0}'.format(linewc))
-        print('  actual polydata bounds: {0}'.format(linesPoly.GetBounds()))
-        print('  projected bounds: {0}'.format(projBounds))
-        print('  computed draw area bounds: {0}'.format(rect))
+        debugMsg('In prepLines')
+        debugMsg('  line vp: {0}'.format(line.viewport))
+        debugMsg('  line wc: {0}'.format(line.worldcoordinate))
+        debugMsg('  adjusted line wc: {0}'.format(linewc))
+        debugMsg('  actual polydata bounds: {0}'.format(linesPoly.GetBounds()))
+        debugMsg('  projected bounds: {0}'.format(projBounds))
+        debugMsg('  computed draw area bounds: {0}'.format(rect))
 
-    # prepLinesCount += 1
+        if DEBUG_MODE:
+            gridFileName = 'lines_{0}'.format(prepLinesCount)
+            debugWriteGrid(linesPoly, gridFileName)
+            print('    wrote {0}.vtp'.format(gridFileName))
+            prepLinesCount += 1
 
     return actors
 
