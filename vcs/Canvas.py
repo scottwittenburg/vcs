@@ -2574,6 +2574,9 @@ class Canvas(vcs.bestMatch):
     #    self.clear()
     #    self.plot(*self.__last_plot_actual_args, **self.__last_plot_keyargs)
 
+    def vtkJsExport(self):
+        self.backend.dumpPlotDataSets()
+
     def plot(self, *actual_args, **keyargs):
         """Plot an array(s) of data given a template and graphics method.
 

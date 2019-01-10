@@ -977,6 +977,43 @@ class VTKVCSBackend(object):
 
         return returned
 
+    def dumpPlotDataSets(self):
+        # Try to extract and write out all the polydata associated with the scene
+        print('\n\nIterating datasets\n')
+        orderedSceneItems = []
+        contextScene = self.contextView.GetScene()
+        numItems = contextScene.GetNumberOfItems()
+        for itemIdx in range(numItems):
+            sceneItem = contextScene.GetItem(itemIdx)
+            print('item {0} is a {1}'.format(itemIdx, sceneItem.GetClassName()))
+            drawAreaItem = sceneItem.GetDrawAreaItem()
+            numChildItems = drawAreaItem.GetNumberOfItems()
+            for childItemIdx in range(numChildItems):
+                childItem = drawAreaItem.GetItem(childItemIdx)
+                exportable = False
+                if childItem.IsA('vtkPolyDataItem'):
+                    exportable = True
+                    orderedSceneItems.append(childItem.GetPolyData())
+                print('  child {0} is a {1} {2}'.format(childItemIdx, childItem.GetClassName(), '- EXPORTABLE' if exportable else ''))
+        print('\n\n')
+
+        if orderedSceneItems:
+            temporaryDirectoryName = tempfile.mkdtemp()
+            print('Writing dumped data to {0}'.format(temporaryDirectoryName))
+
+            for pdIdx in range(len(orderedSceneItems)):
+                filename = 'sceneItem-{0}'.format(pdIdx)
+                filepath = os.path.join(temporaryDirectoryName, filename)
+                polyData = orderedSceneItems[pdIdx]
+
+                dsWriter = vtk.vtkJSONDataSetWriter()
+                dsWriter.SetFileName(filepath)
+                dsWriter.SetInputDataObject(polyData)
+                dsWriter.Write()
+
+        # shutil.rmtree(temporaryDirectoryName)
+
+
     def setLayer(self, renderer, priority):
         n = self.numberOfPlotCalls + (priority - 1) * 200 + 1
         nMax = max(self.renWin.GetNumberOfLayers(), n + 1)
