@@ -356,14 +356,14 @@ class MeshfillPipeline(Pipeline2D):
                                        self._dataWrapModulo,
                                        vp, self._template.data.priority, **kwargs)
 
-    def getPlottingBounds(self):
-        """gm.datawc if it is set or dataset_bounds
-        """
-        if (self._vtkGeoTransform):
-            return vcs2vtk.getWrappedBounds(
-                [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
-                self._vtkDataSetBounds, self._dataWrapModulo)
-        else:
-            return vcs2vtk.getPlottingBounds(
-                [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
-                self._vtkDataSetBounds, self._vtkGeoTransform)
+    # def getPlottingBounds(self):
+    #     """gm.datawc if it is set or dataset_bounds
+    #     """
+    #     if (self._vtkGeoTransform):
+    #         return vcs2vtk.getWrappedBounds(
+    #             [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
+    #             self._vtkDataSetBounds, self._dataWrapModulo)
+    #     else:
+    #         return vcs2vtk.getPlottingBounds(
+    #             [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
+    #             self._vtkDataSetBounds, self._vtkGeoTransform)

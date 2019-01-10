@@ -134,8 +134,12 @@ class IsolinePipeline(Pipeline2D):
         area = vtk.vtkInteractiveArea()
         view.GetScene().AddItem(area)
 
+        projType = vcs.elements["projection"][self._gm.projection].type
+        NPointsInterp = vcs2vtk.getNumberOfWCSubdivs(projType)
+        plotwc = vcs2vtk.adjustWorldCoordBounds(plotting_dataset_bounds, projType)
+
         adjusted_plotting_bounds = vcs2vtk.getProjectedBoundsForWorldCoords(
-            plotting_dataset_bounds, self._gm.projection)
+            plotwc, self._gm.projection, subdiv=NPointsInterp)
         drawAreaBounds = vcs2vtk.computeDrawAreaBounds(adjusted_plotting_bounds)
 
         [renWinWidth, renWinHeight] = self._context().renWin.GetSize()

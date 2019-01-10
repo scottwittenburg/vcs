@@ -139,4 +139,16 @@ class TestVCSBasicGms(basevcstest.VCSBaseTest):
         #         self.basicGm(gm, proj, lat1=90, lat2=0, rg=True, flip=True)
         # self.basicGm("isofill", bigvalues=True)
 
-        self.basicGm("boxfill", "aeqd", mask=True)
+        gm = "isofill"
+        proj = "aeqd"
+
+        self.basicGm(gm, proj, mask=True)
+        # self.basicGm(gm, proj, lat1=-90, lat2=0)
+        # self.basicGm(gm, proj, lat1=-90, lat2=0, rg=True)
+        # self.basicGm(gm, proj, lat1=-90, lat2=0, lon1=-180, lon2=180)
+        # self.basicGm(gm, proj, lat1=-90, lat2=0, lon1=-180, lon2=180, rg=True)
+        # self.basicGm(gm, proj, lat1=-90, lat2=0, lon1=0, lon2=360)
+        # self.basicGm(gm, proj, lat1=-90, lat2=0, lon1=0, lon2=360, rg=True)
+        # self.basicGm(gm, proj, lat1=90, lat2=0)
+        # self.basicGm(gm, proj, lat1=90, lat2=0, rg=True)
+        # self.basicGm(gm, proj, lat1=90, lat2=0, rg=True, flip=True)
