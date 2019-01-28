@@ -2121,8 +2121,8 @@ def adjustWorldCoordBounds(wc, projType):
         epsilon = 1
         if linewc[0] <= -180:
             linewc[0] = -180 + epsilon
-        if linewc[1] >= 180:
-            linewc[1] = 180 - epsilon
+        # if linewc[1] >= 180:
+        #     linewc[1] = 180 - epsilon
 
     return linewc
 
