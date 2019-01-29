@@ -46,6 +46,8 @@ class MeshfillPipeline(Pipeline2D):
         luts = []
         geos = []
         wholeDataMin, wholeDataMax = vcs.minmax(self._originalData1)
+        # import pdb
+        # pdb.set_trace()
         plotting_dataset_bounds = self.getPlottingBounds()
         x1, x2, y1, y2 = plotting_dataset_bounds
         # We need to do the convertion thing
@@ -356,14 +358,17 @@ class MeshfillPipeline(Pipeline2D):
                                        self._dataWrapModulo,
                                        vp, self._template.data.priority, **kwargs)
 
-    # def getPlottingBounds(self):
-    #     """gm.datawc if it is set or dataset_bounds
-    #     """
-    #     if (self._vtkGeoTransform):
-    #         return vcs2vtk.getWrappedBounds(
-    #             [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
-    #             self._vtkDataSetBounds, self._dataWrapModulo)
-    #     else:
-    #         return vcs2vtk.getPlottingBounds(
-    #             [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
-    #             self._vtkDataSetBounds, self._vtkGeoTransform)
+    def getPlottingBounds(self):
+        """gm.datawc if it is set or dataset_bounds
+        """
+        # It seems the reason for having this specialization of this method
+        # might be to keep from using utils.py getworldcoordinates in the case
+        # of meshfillpipeline.  No idea why though.
+        if (self._vtkGeoTransform):
+            return vcs2vtk.getWrappedBounds(
+                [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
+                self._vtkDataSetBounds, self._dataWrapModulo)
+        else:
+            return vcs2vtk.getPlottingBounds(
+                [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],
+                self._vtkDataSetBounds, self._vtkGeoTransform)
