@@ -1104,6 +1104,8 @@ class VTKVCSBackend(object):
         item.SetMappedColors(color_arr)
         area.GetDrawAreaItem().AddItem(item)
 
+        vcs2vtk.debugWriteGrid(contData, 'continents')
+
     def renderTemplate(self, tmpl, data, gm, taxis,
                        zaxis, X=None, Y=None, **kargs):
         # view and interactive area

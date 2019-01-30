@@ -719,6 +719,7 @@ def genGrid(data1, data2, gm, deep=True, grid=None, geo=None, genVectors=False,
         projection = vcs.elements["projection"][gm.projection]
         vg.SetPoints(pts)
         wrb = getWrappedBounds(wc, [xm, xM, ym, yM], wrap)
+        debugWriteGrid(vg, 'grid-before-project')
         debugMsg('wrapped bounds = [xm, xM, ym, yM] = [{0}, {1}, {2}, {3}]'.format(xm, xM, ym, yM))
         geo, geopts = project(pts, projection, wrb)
         # proj4 returns inf for points that are not visible. Set those to a valid point
@@ -2067,8 +2068,11 @@ def getStipple(line_type):
     else:
         raise Exception("Unknown line type: '%s'" % line_type)
 
+pbIdx = 0
 
 def getProjectedBoundsForWorldCoords(wc, proj, subdiv=50):
+    global pbIdx
+
     if vcs.elements['projection'][proj].type == 'linear':
         return wc
 
@@ -2083,11 +2087,46 @@ def getProjectedBoundsForWorldCoords(wc, proj, subdiv=50):
     ys += numpy.linspace(wc[3], wc[2], subdiv).tolist()
 
     pts = vtk.vtkPoints()
+    lines = vtk.vtkCellArray()
+    cellIdxArray = vtk.vtkFloatArray()
+    cellIdxArray.SetName('cellIndices')
+    cellIdxArray.SetNumberOfComponents(1)
+    cellIdxArray.SetNumberOfTuples(len(xs) - 1)
 
     for idx in range(len(xs)):
         pts.InsertNextPoint(xs[idx], ys[idx], 0.0)
+        if idx > 0:
+            lines.InsertNextCell(2)
+            lines.InsertCellPoint(idx - 1)
+            lines.InsertCellPoint(idx)
+            cellIdxArray.SetTuple1(idx - 1, float(idx))
 
     geoTransform, xformPts = project(pts, proj, wc)
+
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(xformPts)
+    pd.SetLines(lines)
+    pd.GetCellData().AddArray(cellIdxArray)
+
+    pdOrig = vtk.vtkPolyData()
+    pdOrig.SetPoints(pts)
+    pdOrig.SetLines(lines)
+    pdOrig.GetCellData().AddArray(cellIdxArray)
+
+    crude = {}
+    for ptIdx in range(xformPts.GetNumberOfPoints()):
+        origPt = pts.GetPoint((ptIdx))
+        pt = xformPts.GetPoint(ptIdx)
+        print('point {0}: [{1}, {2}] -> [{3}, {4}]'.format(ptIdx, origPt[0], origPt[1], pt[0], pt[1]))
+
+    fname = 'proj-bounds-{0}'.format(pbIdx)
+    print('Writing {0} grid to disk'.format(fname))
+    debugWriteGrid(pd, fname)
+
+    fnameOrig = 'unproj-bounds{0}'.format(pbIdx)
+    debugWriteGrid(pdOrig, fnameOrig)
+
+    pbIdx += 1
 
     # def printPoints(vtkPoints):
     #     ptStr = ''
@@ -2121,8 +2160,10 @@ def adjustWorldCoordBounds(wc, projType):
         epsilon = 1
         if linewc[0] <= -180:
             linewc[0] = -180 + epsilon
-        # if linewc[1] >= 180:
-        #     linewc[1] = 180 - epsilon
+        if linewc[1] >= 360:
+            linewc[1] = 360 - epsilon
+        if linewc[2] <= -90:
+            linewc[2] = -90 + epsilon
 
     return linewc
 

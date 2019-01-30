@@ -162,6 +162,8 @@ class MeshfillPipeline(Pipeline2D):
         vcs2vtk.debugMsg('  projection type = {0}'.format(vcs.elements["projection"][self._gm.projection].type))
         vcs2vtk.debugMsg('  vtkGeoTransform = {0}'.format(self._vtkGeoTransform.GetClassName() if self._vtkGeoTransform else 'None'))
         vcs2vtk.debugMsg('  plotting bounds = {0}'.format(plotting_dataset_bounds))
+        vcs2vtk.debugMsg('  plotwc = {0}'.format(plotwc))
+        vcs2vtk.debugMsg('  adjusted plotting bounds = {0}'.format(adjusted_plotting_bounds))
         vcs2vtk.debugMsg('  graphics method bounds = [{0}, {1}, {2}, {3}]'.format(self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2))
         vcs2vtk.debugMsg('  dataset bounds = {0}'.format(self._vtkDataSetBounds))
         vcs2vtk.debugMsg('  dataset bounds (no mask) = {0}'.format(self._vtkDataSetBoundsNoMask))
@@ -193,6 +195,8 @@ class MeshfillPipeline(Pipeline2D):
                 item.SetScalarMode(vtk.VTK_SCALAR_MODE_USE_CELL_DATA)
                 item.SetMappedColors(colorArray)
                 area.GetDrawAreaItem().AddItem(item)
+
+                vcs2vtk.debugWriteGrid(poly, 'meshfill-wireframe')
             elif style == "solid":
                 if self._needsCellData:
                     attrs = poly.GetCellData()
@@ -234,6 +238,8 @@ class MeshfillPipeline(Pipeline2D):
                 if deleteColors:
                     mappedColors.FastDelete()
                 area.GetDrawAreaItem().AddItem(item)
+
+                vcs2vtk.debugWriteGrid(poly, 'meshfill-solid')
 
             # TODO See comment in boxfill.
             if item is not None:
@@ -280,6 +286,8 @@ class MeshfillPipeline(Pipeline2D):
                         area.GetDrawAreaItem().AddItem(patItem)
 
                         actors.append([patItem, plotting_dataset_bounds])
+
+                        vcs2vtk.debugWriteGrid(patPoly, 'meshfill-pattern-{0}'.format(ctj))
 
         t = self._originalData1.getTime()
         if self._originalData1.ndim > 2:
@@ -364,6 +372,9 @@ class MeshfillPipeline(Pipeline2D):
         # It seems the reason for having this specialization of this method
         # might be to keep from using utils.py getworldcoordinates in the case
         # of meshfillpipeline.  No idea why though.
+        # if vcs.elements["projection"][self._gm.projection].type == 'aeqd':
+        #     return super(MeshfillPipeline, self).getPlottingBounds()
+
         if (self._vtkGeoTransform):
             return vcs2vtk.getWrappedBounds(
                 [self._gm.datawc_x1, self._gm.datawc_x2, self._gm.datawc_y1, self._gm.datawc_y2],

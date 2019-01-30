@@ -64,6 +64,9 @@ class TestVCSBasicGms(basevcstest.VCSBaseTest):
                 v -= v
         elif gm_type == "meshfill":
             s = f("sample", **xtra)
+            # Could put breakpoint here to investigate what cdms2 gave us...
+            #import pdb
+            #pdb.set_trace()
             if mask:
                 s = MV2.masked_less(s, 1150.)
             elif bigvalues:
@@ -142,12 +145,12 @@ class TestVCSBasicGms(basevcstest.VCSBaseTest):
         proj = "aeqd"
 
         # gm = "boxfill"
-        gm = "isofill"
+        # gm = "isofill"
         # gm = "isoline"
-        # gm = "meshfill"
+        gm = "meshfill"
 
         # self.basicGm(gm, proj, mask=True)
-        # self.basicGm(gm, proj, lat1=-90, lat2=0)
+        self.basicGm(gm, proj, lat1=-90, lat2=0)
         # self.basicGm(gm, proj, lat1=-90, lat2=0, rg=True)
         # self.basicGm(gm, proj, lat1=-90, lat2=0, lon1=-180, lon2=180)
         # self.basicGm(gm, proj, lat1=-90, lat2=0, lon1=-180, lon2=180, rg=True)
@@ -155,4 +158,4 @@ class TestVCSBasicGms(basevcstest.VCSBaseTest):
         # self.basicGm(gm, proj, lat1=-90, lat2=0, lon1=0, lon2=360, rg=True)
         # self.basicGm(gm, proj, lat1=90, lat2=0)
         # self.basicGm(gm, proj, lat1=90, lat2=0, rg=True)
-        self.basicGm(gm, proj, lat1=90, lat2=0, rg=True, flip=True)
+        # self.basicGm(gm, proj, lat1=90, lat2=0, rg=True, flip=True)

@@ -428,6 +428,7 @@ class Pipeline2D(IPipeline2D):
         """gm.datawc if it is set or dataset_bounds if there is not geographic projection
            wrapped bounds otherwise
         """
+        print('\nInside Pipeline2D.getPlottingBounds()\n')
         dataBounds = self._vtkDataSetBounds
         worldCoords = vcs.utils.getworldcoordinates(self._gm,
                                                     self._data1.getAxis(-1),
