@@ -1384,9 +1384,8 @@ class TextActorWrapperItem(object):
         return False
 
 
-# def genTextActor(renderer, string=None, x=None, y=None,
 def genTextActor(contextArea, string=None, x=None, y=None,
-                 to='default', tt='default', cmap=None, geoBounds=None, geo=None):
+                 to='default', tt='default', cmap=None, geo=None):
 
     renderer = contextArea.GetDrawAreaItem().GetScene().GetRenderer()
 
@@ -1412,12 +1411,12 @@ def genTextActor(contextArea, string=None, x=None, y=None,
 
     sz = renderer.GetRenderWindow().GetSize()
     actors = []
-    pts = vtk.vtkPoints()
-    if vcs.elements["projection"][tt.projection].type != "linear":
-        if geoBounds is not None:
-            wc = geoBounds[:4]
-        else:
-            wc = None
+    # pts = vtk.vtkPoints()
+    # if vcs.elements["projection"][tt.projection].type != "linear":
+    #     if geoBounds is not None:
+    #         wc = geoBounds[:4]
+    #     else:
+    #         wc = None
 
     for i in range(n):
         t = vtk.vtkTextActor()
@@ -1428,24 +1427,25 @@ def genTextActor(contextArea, string=None, x=None, y=None,
         if vcs.elements["projection"][tt.projection].type != "linear":
             _, pts = project(pts, tt.projection, tt.worldcoordinate, geo=geo)
             X, Y, tz = pts.GetPoint(0)
-            if wc is None:
-                wc = tt.worldcoordinate
-                pts_wc = vtk.vtkPoints()
-                # Scan a bunch of points within wc
-                # In case the proj deformation bring origin close
-                # from each others
-                for wx in numpy.arange(wc[0], wc[1], (wc[1] - wc[0]) / 25.):
-                    for wy in numpy.arange(wc[2], wc[3], (wc[3] - wc[2]) / 25.):
-                        pts_wc.InsertNextPoint(wx, wy, 0.)
-                _, pts_wc = project(pts_wc, tt.projection, tt.worldcoordinate, geo=geo)
-                as_numpy = VN.vtk_to_numpy(pts_wc.GetData())
-                wx = as_numpy[:, 0]
-                wy = as_numpy[:, 1]
-                wc = [wx.min(), wx.max(), wy.min(), wy.max()]
-            X, Y = world2Renderer(renderer, X, Y, tt.viewport, wc)
+            # if wc is None:
+            #     wc = tt.worldcoordinate
+            #     pts_wc = vtk.vtkPoints()
+            #     # Scan a bunch of points within wc
+            #     # In case the proj deformation bring origin close
+            #     # from each others
+            #     for wx in numpy.arange(wc[0], wc[1], (wc[1] - wc[0]) / 25.):
+            #         for wy in numpy.arange(wc[2], wc[3], (wc[3] - wc[2]) / 25.):
+            #             pts_wc.InsertNextPoint(wx, wy, 0.)
+            #     _, pts_wc = project(pts_wc, tt.projection, tt.worldcoordinate, geo=geo)
+            #     as_numpy = VN.vtk_to_numpy(pts_wc.GetData())
+            #     wx = as_numpy[:, 0]
+            #     wy = as_numpy[:, 1]
+            #     wc = [wx.min(), wx.max(), wy.min(), wy.max()]
+            # X, Y = world2Renderer(renderer, X, Y, tt.viewport, wc)
         else:
-            X, Y = world2Renderer(
-                renderer, x[i], y[i], tt.viewport, tt.worldcoordinate)
+            # X, Y = world2Renderer(
+            #     renderer, x[i], y[i], tt.viewport, tt.worldcoordinate)
+            X, Y = x[i], y[i]
         t.SetPosition(X, Y)
         t.SetInput(string[i])
 
@@ -2062,24 +2062,6 @@ def getProjectedBoundsForWorldCoords(wc, proj, subdiv=50):
 
 
 def prepLine(plotsContext, line, geoBounds=None, cmap=None):
-    numDivisions = 50
-    if vcs.elements["projection"][line.projection].type == "aeqd":
-        numDivisions = 100
-
-    # print('Inside prepLine, about to get projected bounds for world coordinates')
-
-    projBounds = getProjectedBoundsForWorldCoords(
-        line.worldcoordinate, line.projection, subdiv=numDivisions)
-
-    # print('prepping a line')
-    # print('  projection type = {0}'.format(vcs.elements["projection"][line.projection].type))
-    # print('  wc = {0}'.format(line.worldcoordinate))
-    # print('  projected bounds = {0}'.format(projBounds))
-    # print('  vp = {0}'.format(line.viewport))
-    # print('  coords')
-    # print('    x = {0}'.format(line.x))
-    # print('    y = {0}'.format(line.y))
-
     number_lines = prepPrimitive(line)
     if number_lines == 0:
         return []
@@ -2161,31 +2143,8 @@ def prepLine(plotsContext, line, geoBounds=None, cmap=None):
         geoTransform, pts = project(pts, line.projection, line.worldcoordinate)
         linesPoly.SetPoints(pts)
 
-        view = plotsContext.contextView
-
-        area = vtk.vtkContextArea()
-        view.GetScene().AddItem(area)
-
-        vp = line.viewport
-
-        wc = projBounds
-
-        doAdjustBounds = True
-        boundsAdjustment = 1.005
-
-        if doAdjustBounds:
-            wc = adjustBounds(wc, boundsAdjustment, boundsAdjustment)
-        rect = vtk.vtkRectd(wc[0], wc[2], wc[1] - wc[0], wc[3] - wc[2])
-
-        [renWinWidth, renWinHeight] = plotsContext.renWin.GetSize()
-        if doAdjustBounds:
-            vp = adjustBounds(vp, boundsAdjustment, boundsAdjustment)
-        geom = vtk.vtkRecti(int(round(vp[0] * renWinWidth)),
-                            int(round(vp[2] * renWinHeight)),
-                            int(round((vp[1] - vp[0]) * renWinWidth)),
-                            int(round((vp[3] - vp[2]) * renWinHeight)))
-
-        configureContextArea(area, rect, geom)
+        area = plotsContext.retrieveContextArea(
+            line.viewport, line.worldcoordinate, line.projection, 1.005)
 
         intValue = vtk.vtkIntArray()
         intValue.SetNumberOfComponents(1)
