@@ -208,6 +208,7 @@ class VTKVCSBackend(object):
         self.canvas = canvas
         self.renWin = renWin
         self.contextView = None
+        self._contextAreaCache = {}
         self.debug = debug
         self.bg = bg
         self.type = "vtk"
@@ -266,6 +267,55 @@ class VTKVCSBackend(object):
             self.oldCursor = None
 
         self._animationActorTransforms = {}
+
+    def retrieveContextArea(self, ctx_vp, ctx_wc, ctx_proj, adjustment=1.0):
+        # import pdb
+        # pdb.set_trace()
+        ctx_proj_type = vcs.elements['projection'][ctx_proj].type
+        ctx_key = (tuple(ctx_vp), tuple(ctx_wc), ctx_proj_type, adjustment)
+        cachedContextArea = None
+
+        try:
+            cachedContextArea = self._contextAreaCache[ctx_key]
+        except KeyError as key_err:
+            pass
+
+        if not cachedContextArea:
+            wc = ctx_wc
+            vp = ctx_vp
+
+            if ctx_proj_type != 'linear':
+                numDivisions = 50
+                if ctx_proj_type == "aeqd":
+                    numDivisions = 100
+                wc = vcs2vtk.getProjectedBoundsForWorldCoords(wc, ctx_proj, subdiv=numDivisions)
+
+            if adjustment != 1.0:
+                wc = vcs2vtk.adjustBounds(wc, adjustment, adjustment)
+                vp = vcs2vtk.adjustBounds(vp, adjustment, adjustment)
+
+            drawAreaBounds = vcs2vtk.computeDrawAreaBounds(wc)
+            [renWinWidth, renWinHeight] = self.renWin.GetSize()
+            screenGeom = vtk.vtkRecti(int(round(vp[0] * renWinWidth)),
+                                      int(round(vp[2] * renWinHeight)),
+                                      int(round((vp[1] - vp[0]) * renWinWidth)),
+                                      int(round((vp[3] - vp[2]) * renWinHeight)))
+
+            cachedContextArea = vtk.vtkContextArea()
+            self.contextView.GetScene().AddItem(cachedContextArea)
+            vcs2vtk.configureContextArea(cachedContextArea, drawAreaBounds, screenGeom)
+            self._contextAreaCache[ctx_key] = cachedContextArea
+
+            msg = ''.join([
+                'vtkContextArea cache miss, created a new one, there are ',
+                'now {0} cached context areas',
+            ]).format(len(self._contextAreaCache))
+
+            print(msg)
+        else:
+            print(" ------------- ********* !!!SAVINGS!!! ********* ------------- ")
+
+        return cachedContextArea
 
     def setAnimationStepper(self, stepper):
         for plot in list(self.plotApps.values()):
@@ -585,6 +635,7 @@ class VTKVCSBackend(object):
                 self.logoContextItem = None
                 self.logoContextItemPython = None
 
+        self._contextAreaCache = {}
         self._animationActorTransforms = {}
 
         self.showGUI(render=False)
@@ -882,38 +933,20 @@ class VTKVCSBackend(object):
                 #         tt.viewport), tuple(
                 #         tt.worldcoordinate), tt.projection)
 
-                if vcs.elements["projection"][tt.projection].type != "linear":
-                    plotting_bounds = kargs.get(
-                        "plotting_dataset_bounds", None)
-                    if plotting_bounds:
-                        newbounds = vcs2vtk.getProjectedBoundsForWorldCoords(
-                            plotting_bounds, tt.projection)
-                        if all([not math.isinf(b) for b in newbounds]):
-                            bounds = newbounds
+                # if vcs.elements["projection"][tt.projection].type != "linear":
+                #     plotting_bounds = kargs.get(
+                #         "plotting_dataset_bounds", None)
+                #     if plotting_bounds:
+                #         newbounds = vcs2vtk.getProjectedBoundsForWorldCoords(
+                #             plotting_bounds, tt.projection)
+                #         if all([not math.isinf(b) for b in newbounds]):
+                #             bounds = newbounds
 
-                view = self.contextView
-
-                area = vtk.vtkContextArea()
-                view.GetScene().AddItem(area)
-
-                vp = self.canvas._viewport
-                wc = self.canvas._worldcoordinate
-
-                [renWinWidth, renWinHeight] = self.renWin.GetSize()
-                geom = vtk.vtkRecti(int(round(vp[0] * renWinWidth)),
-                                    int(round(vp[2] * renWinHeight)),
-                                    int(round((vp[1] - vp[0]) * renWinWidth)),
-                                    int(round((vp[3] - vp[2]) * renWinHeight)))
-
-                rect = vtk.vtkRectd(0.0, 0.0, float(renWinWidth), float(renWinHeight))
-
-                vcs2vtk.configureContextArea(area, rect, geom)
-
+                area = self.retrieveContextArea(
+                    tt.viewport, tt.worldcoordinate, tt.projection)
                 returned["vtk_backend_text_actors"] = vcs2vtk.genTextActor(
-                    area,
-                    to=to,
-                    tt=tt,
-                    cmap=self.canvas.colormap, geoBounds=bounds, geo=vtk_backend_geo)
+                    area, to=to, tt=tt, cmap=self.canvas.colormap,
+                    geo=vtk_backend_geo)
         elif gtype == "line":
             if gm.priority != 0:
                 vcs2vtk.prepLine(self, gm, geoBounds=bounds, cmap=self.canvas.colormap)
@@ -1103,24 +1136,6 @@ class VTKVCSBackend(object):
 
     def renderTemplate(self, tmpl, data, gm, taxis,
                        zaxis, X=None, Y=None, **kargs):
-        # view and interactive area
-        view = self.contextView
-
-        area = vtk.vtkContextArea()
-        view.GetScene().AddItem(area)
-
-        vp = self.canvas._viewport
-
-        [renWinWidth, renWinHeight] = self.renWin.GetSize()
-        geom = vtk.vtkRecti(int(round(vp[0] * renWinWidth)),
-                            int(round(vp[2] * renWinHeight)),
-                            int(round((vp[1] - vp[0]) * renWinWidth)),
-                            int(round((vp[3] - vp[2]) * renWinHeight)))
-
-        rect = vtk.vtkRectd(0.0, 0.0, float(renWinWidth), float(renWinHeight))
-
-        vcs2vtk.configureContextArea(area, rect, geom)
-
         # ok first basic template stuff, let's store the displays
         # because we need to return actors for min/max/mean
         kargs["taxis"] = taxis
@@ -1174,6 +1189,8 @@ class VTKVCSBackend(object):
                 tt = vcs.elements["texttable"][tt]
                 to = vcs.elements["textorientation"][to]
                 if crdate.priority > 0:
+                    print('crdate: vp = {0}, wc = {1}'.format(tt.viewport, tt.worldcoordinate))
+                    area = self.retrieveContextArea(tt.viewport, tt.worldcoordinate, tt.projection)
                     actors = vcs2vtk.genTextActor(area, to=to, tt=tt)
                     returned["vtk_backend_crdate_text_actor"] = actors[0]
                 del(vcs.elements["texttable"][tt.name])
@@ -1183,6 +1200,8 @@ class VTKVCSBackend(object):
                 tt = vcs.elements["texttable"][tt]
                 to = vcs.elements["textorientation"][to]
                 if crtime.priority > 0:
+                    print('crtime: vp = {0}, wc = {1}'.format(tt.viewport, tt.worldcoordinate))
+                    area = self.retrieveContextArea(tt.viewport, tt.worldcoordinate, tt.projection)
                     actors = vcs2vtk.genTextActor(area, to=to, tt=tt)
                     returned["vtk_backend_crtime_text_actor"] = actors[0]
                 del(vcs.elements["texttable"][tt.name])
@@ -1204,6 +1223,8 @@ class VTKVCSBackend(object):
                 tt = vcs.elements["texttable"][tt]
                 to = vcs.elements["textorientation"][to]
                 if zname.priority > 0:
+                    print('name: vp = {0}, wc = {1}'.format(tt.viewport, tt.worldcoordinate))
+                    area = self.retrieveContextArea(tt.viewport, tt.worldcoordinate, tt.projection)
                     vcs2vtk.genTextActor(area, to=to, tt=tt)
                 del(vcs.elements["texttable"][tt.name])
                 del(vcs.elements["textorientation"][to.name])
@@ -1215,6 +1236,8 @@ class VTKVCSBackend(object):
                         tt, to = zunits.name.split(":::")
                         tt = vcs.elements["texttable"][tt]
                         to = vcs.elements["textorientation"][to]
+                        print('zunits: vp = {0}, wc = {1}'.format(tt.viewport, tt.worldcoordinate))
+                        area = self.retrieveContextArea(tt.viewport, tt.worldcoordinate, tt.projection)
                         vcs2vtk.genTextActor(area, to=to, tt=tt)
                         del(vcs.elements["texttable"][tt.name])
                         del(vcs.elements["textorientation"][to.name])
@@ -1223,6 +1246,8 @@ class VTKVCSBackend(object):
                 tt = vcs.elements["texttable"][tt]
                 to = vcs.elements["textorientation"][to]
                 if zvalue.priority > 0:
+                    print('zvalue: vp = {0}, wc = {1}'.format(tt.viewport, tt.worldcoordinate))
+                    area = self.retrieveContextArea(tt.viewport, tt.worldcoordinate, tt.projection)
                     actors = vcs2vtk.genTextActor(area, to=to, tt=tt)
                     returned["vtk_backend_zvalue_text_actor"] = actors[0]
                 del(vcs.elements["texttable"][tt.name])
