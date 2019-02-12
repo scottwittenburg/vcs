@@ -1506,40 +1506,7 @@ def __build_pd__():
 
 
 def prepFillarea(context, renWin, farea, cmap=None):
-    vp = farea.viewport
-
-    # view and interactive area
-    view = context.contextView
-    area = vtk.vtkContextArea()
-    view.GetScene().AddItem(area)
-
-    wc = farea.worldcoordinate
-    rect = vtk.vtkRectd(wc[0], wc[2], wc[1] - wc[0], wc[3] - wc[2])
-
-    [renWinWidth, renWinHeight] = renWin.GetSize()
-    geom = vtk.vtkRecti(int(round(vp[0] * renWinWidth)),
-                        int(round(vp[2] * renWinHeight)),
-                        int(round((vp[1] - vp[0]) * renWinWidth)),
-                        int(round((vp[3] - vp[2]) * renWinHeight)))
-
-    area.SetDrawAreaBounds(rect)
-    area.SetGeometry(geom)
-    area.SetFillViewport(False)
-    area.SetShowGrid(False)
-
-    axisLeft = area.GetAxis(vtk.vtkAxis.LEFT)
-    axisRight = area.GetAxis(vtk.vtkAxis.RIGHT)
-    axisBottom = area.GetAxis(vtk.vtkAxis.BOTTOM)
-    axisTop = area.GetAxis(vtk.vtkAxis.TOP)
-    axisTop.SetVisible(False)
-    axisRight.SetVisible(False)
-    axisLeft.SetVisible(False)
-    axisBottom.SetVisible(False)
-
-    axisTop.SetMargins(0, 0)
-    axisRight.SetMargins(0, 0)
-    axisLeft.SetMargins(0, 0)
-    axisBottom.SetMargins(0, 0)
+    area = context.retrieveContextArea(farea.viewport, farea.worldcoordinate, farea.projection)
 
     n = prepPrimitive(farea)
     if n == 0:
@@ -1647,6 +1614,8 @@ def prepFillarea(context, renWin, farea, cmap=None):
 
         item.SetMappedColors(colorArray)
         area.GetDrawAreaItem().AddItem(item)
+
+    [renWinWidth, renWinHeight] = renWin.GetSize()
 
     # Patterns/hatches support
     for i, pd in pattern_polydatas:
