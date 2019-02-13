@@ -1062,6 +1062,8 @@ class P(vcs.bestMatch):
         .. pragma: skip-doctest TODO add example/doctest
         """
 
+        vcs.HACKY_FLAG_DISABLE_TEXT_VIEWPORT_CLIPPING = True
+
         kargs["donotstoredisplay"] = True
         if X is None:
             X = slab.getAxis(-1)
@@ -1250,6 +1252,9 @@ class P(vcs.bestMatch):
             del(vcs.elements["texttable"][sp[0]])
             del(vcs.elements["textorientation"][sp[1]])
             del(vcs.elements["textcombined"][tt.name])
+
+        vcs.HACKY_FLAG_DISABLE_TEXT_VIEWPORT_CLIPPING = False
+
         return displays
 
     def blank(self, attribute=None):

@@ -941,9 +941,15 @@ class VTKVCSBackend(object):
                 #             plotting_bounds, tt.projection)
                 #         if all([not math.isinf(b) for b in newbounds]):
                 #             bounds = newbounds
+                ctx_vp = tt.viewport
+                ctx_wc = tt.worldcoordinate
+                ctx_proj = tt.projection
+                ctx_adjustment = 1.0
 
-                area = self.retrieveContextArea(
-                    tt.viewport, tt.worldcoordinate, tt.projection)
+                if vcs.HACKY_FLAG_DISABLE_TEXT_VIEWPORT_CLIPPING:
+                    ctx_adjustment = 2.0
+
+                area = self.retrieveContextArea(ctx_vp, ctx_wc, ctx_proj, ctx_adjustment)
                 returned["vtk_backend_text_actors"] = vcs2vtk.genTextActor(
                     area, to=to, tt=tt, cmap=self.canvas.colormap,
                     geo=vtk_backend_geo)
