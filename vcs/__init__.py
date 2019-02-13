@@ -117,6 +117,8 @@ _colorMap = "viridis"
 
 _default_time_units = 'days since 2000'
 
+HACKY_FLAG_DISABLE_TEXT_VIEWPORT_CLIPPING = False
+
 #
 #
 # Set up the User's  directory if necessary. Copy files from      #
