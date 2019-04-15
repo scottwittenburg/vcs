@@ -57,7 +57,7 @@ class IPipeline2D(Pipeline):
         - _needsVectors: True if the plot needs vectors, false if it needs scalars
         - _scalarRange: The range of _data1 as tuple(float min, float max)
         - _vectorRange: The range of the vector magnitude formed from _data1, _data2
-        - _maskedDataMapper: The mapper used to render masked data.
+        - _maskedDataFilter: The mapper used to render masked data.
     """
 
     def __init__(self, gm, context_, plot_keyargs):
@@ -88,7 +88,7 @@ class IPipeline2D(Pipeline):
         self._needsVectors = False
         self._scalarRange = None
         self._vectorRange = [0.0, 0.0]
-        self._maskedDataMapper = None
+        self._maskedDataFilter = None
 
     def _updateScalarData(self):
         """Create _data1 and _data2 from _originalData1 and _originalData2."""
@@ -158,7 +158,7 @@ class IPipeline2D(Pipeline):
         raise NotImplementedError("Missing override.")
 
     def _createMaskedDataMapper(self):
-        """Create _maskedDataMapper for rendering masked data.
+        """Create _maskedDataFilter for rendering masked data.
 
         The mapper may be None if not needed.
         """
@@ -415,14 +415,13 @@ class Pipeline2D(IPipeline2D):
         _colorMap = self.getColorMap()
         if color is not None:
             color = self.getColorIndexOrRGBA(_colorMap, color)
-
-        self._maskedDataMapper = vcs2vtk.putMaskOnVTKGrid(
+        (self._maskedDataFilter, self._maskedLut) = vcs2vtk.putMaskOnVTKGrid(
             # self._data1, self._vtkDataSetFittedToViewport, color, self._hasCellData,
             self._data1, self._vtkDataSet, color, self._hasCellData,
             deep=False)
 
-        self._resultDict["vtk_backend_missing_mapper"] = (
-            self._maskedDataMapper, color, self._hasCellData)
+        self._resultDict["vtk_backend_masked_data_filter"] = (
+            (self._maskedDataFilter, self._maskedLut), color, self._hasCellData)
 
     def getPlottingBounds(self):
         """gm.datawc if it is set or dataset_bounds if there is not geographic projection

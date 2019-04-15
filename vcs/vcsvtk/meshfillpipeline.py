@@ -102,9 +102,9 @@ class MeshfillPipeline(Pipeline2D):
         if len(geos) > 0:
             self._resultDict["vtk_backend_geofilters"] = geos
 
-        if self._maskedDataMapper is not None:
+        if self._maskedDataFilter is not None:
             # Note that this is different for meshfill -- others prepend.
-            mappers.append(self._maskedDataMapper)
+            mappers.append(self._maskedDataFilter)
 
         wireColor = [0, 0, 0, 255]
 
@@ -219,12 +219,12 @@ class MeshfillPipeline(Pipeline2D):
 
             # TODO See comment in boxfill.
             if item is not None:
-                if mapper is self._maskedDataMapper:
-                    actors.append([item, self._maskedDataMapper, plotting_dataset_bounds])
+                if mapper is self._maskedDataFilter:
+                    actors.append([item, self._maskedDataFilter, plotting_dataset_bounds])
                 else:
                     actors.append([item, plotting_dataset_bounds])
 
-            if mapper is not self._maskedDataMapper:
+            if mapper is not self._maskedDataFilter:
 
                 if not wireframe:
                     # Since pattern creation requires a single color, assuming the

@@ -314,11 +314,11 @@ class IsolinePipeline(Pipeline2D):
         if len(cots) > 0:
             self._resultDict["vtk_backend_contours"] = cots
 
-        if self._maskedDataMapper is not None:
-            mappers.insert(0, self._maskedDataMapper)
+        if self._maskedDataFilter is not None:
+            mappers.insert(0, self._maskedDataFilter)
 
-            self._maskedDataMapper.Update()
-            maskedData = self._maskedDataMapper.GetInput()
+            self._maskedDataFilter.Update()
+            maskedData = self._maskedDataFilter.GetInput()
             maskedColors = vtk.vtkUnsignedCharArray()
             maskedColors.SetNumberOfComponents(4)
             for i in range(poly.GetNumberOfCells()):
@@ -329,7 +329,7 @@ class IsolinePipeline(Pipeline2D):
             maskItem.SetMappedColors(maskedColors)
             area.GetDrawAreaItem().AddItem(maskItem)
 
-            actors.append([maskItem, self._maskedDataMapper, plotting_dataset_bounds])
+            actors.append([maskItem, self._maskedDataFilter, plotting_dataset_bounds])
 
         self._resultDict["vtk_backend_actors"] = actors
 

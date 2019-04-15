@@ -225,7 +225,8 @@ def setArray(grid, array, arrayName, isCellData, isScalars):
 
 def putMaskOnVTKGrid(data, grid, actorColor=None, cellData=True, deep=True):
     msk = data.mask
-    mapper = None
+    # mapper = None
+    geoFilter = None
     if msk is not numpy.ma.nomask and not numpy.allclose(msk, False):
         if actorColor is not None:
             flatIMask = msk.astype(numpy.double).flat
@@ -271,12 +272,6 @@ def putMaskOnVTKGrid(data, grid, actorColor=None, cellData=True, deep=True):
                 lut.SetTableValue(0, r / 100., g / 100., b / 100., 0.)
                 lut.SetTableValue(1, r / 100., g / 100., b / 100., a / 100.)
             geoFilter.Update()
-            mapper = vtk.vtkPolyDataMapper()
-            mapper.SetInputConnection(geoFilter.GetOutputPort())
-            mapper.SetLookupTable(lut)
-            mapper.SetScalarRange(0, 1)
-            if cellData:
-                mapper.SetScalarModeToUseCellData()
 
         # The ghost array now stores information about hidden (blanked)
         # points/cells. Setting an array entry to the bitwise value
@@ -301,7 +296,7 @@ def putMaskOnVTKGrid(data, grid, actorColor=None, cellData=True, deep=True):
         if (grid.GetExtentType() == vtk.VTK_PIECES_EXTENT):
             removeHiddenPointsOrCells(grid, celldata=cellData)
 
-    return mapper
+    return (geoFilter, lut)
 
 
 def getBoundsList(axis, hasCellData, dualGrid):

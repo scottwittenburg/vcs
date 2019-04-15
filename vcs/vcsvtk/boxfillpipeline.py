@@ -66,8 +66,8 @@ class BoxfillPipeline(Pipeline2D):
         else:
             self._plotInternalCustomBoxfill()
 
-        if self._maskedDataMapper is not None:
-            self._mappers.insert(0, self._maskedDataMapper)
+        if self._maskedDataFilter is not None:
+            self._mappers.insert(0, self._maskedDataFilter)
 
         plotting_dataset_bounds = self.getPlottingBounds()
         x1, x2, y1, y2 = plotting_dataset_bounds
@@ -158,12 +158,12 @@ class BoxfillPipeline(Pipeline2D):
                     mappedColors.FastDelete()
                 area.GetDrawAreaItem().AddItem(item)
 
-                if mapper is self._maskedDataMapper:
-                    actors.append([item, self._maskedDataMapper, plotting_dataset_bounds])
+                if mapper is self._maskedDataFilter:
+                    actors.append([item, self._maskedDataFilter, plotting_dataset_bounds])
                 else:
                     actors.append([item, plotting_dataset_bounds])
 
-            if mapper is not self._maskedDataMapper:
+            if mapper is not self._maskedDataFilter:
                 if self._gm.boxfill_type == "custom":
                     # Patterns/hatches creation for custom boxfill plots
                     patact = None

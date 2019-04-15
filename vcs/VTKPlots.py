@@ -269,8 +269,20 @@ class VTKVCSBackend(object):
         self._animationActorTransforms = {}
 
     def retrieveContextArea(self, ctx_vp, ctx_wc, ctx_proj, adjustment=1.0):
-        # import pdb
-        # pdb.set_trace()
+        """Retrieve cached context area if one already exists for the params
+        or else create and configure a new one, store it in the cache, and
+        return it.
+
+        :param ctx_vp: viewport
+        :param ctx_wc: bounding world coordinates
+        :param ctx_proj: the projection to be used
+        :param adjustment: Sometimes we're asked to draw data within a viewport
+        where it doesn't exactly fit.  If the viewport is too small for a part
+        of the plot, we can keep the data from getting clipped, without moving
+        it on the screen, by growing both the viewport and the world coords by
+        this "adjustment" value.
+        """
+
         ctx_proj_type = vcs.elements['projection'][ctx_proj].type
         ctx_key = (tuple(ctx_vp), tuple(ctx_wc), ctx_proj_type, adjustment)
         cachedContextArea = None
@@ -1793,17 +1805,17 @@ x.geometry(1200,800)
 
             if "vtk_backend_filter" in vtkobjects:
                 vtkobjects["vtk_backend_filter"].Update()
-            if "vtk_backend_missing_mapper" in vtkobjects:
-                missingMapper, color, cellData = vtkobjects[
-                    "vtk_backend_missing_mapper"]
-                missingMapper2 = vcs2vtk.putMaskOnVTKGrid(
+            if "vtk_backend_masked_data_filter" in vtkobjects:
+                (prevMaskFilter, prevMaskLut), color, cellData = vtkobjects[
+                    "vtk_backend_masked_data_filter"]
+                nextMaskFilter, nextMaskLut = vcs2vtk.putMaskOnVTKGrid(
                     array1,
                     vg,
                     color,
                     cellData,
                     deep=False)
             else:
-                missingMapper = None
+                prevMaskFilter = None
             if "vtk_backend_contours" in vtkobjects:
                 for c in vtkobjects["vtk_backend_contours"]:
                     c.Update()
@@ -1822,33 +1834,30 @@ x.geometry(1200,800)
                 i = 0
                 for a in vtkobjects["vtk_backend_actors"]:
                     beItem = a[0]
-                    if a[1] is missingMapper:
+                    if a[1] is prevMaskFilter:
                         i -= 1
-                        mapper = missingMapper2
+                        # mapper = nextMaskFilter
                     else:
                         # Labeled contours are a different kind
                         if "vtk_backend_luts" in vtkobjects:
                             lut, rg = vtkobjects["vtk_backend_luts"][i]
-                            mapper = vtk.vtkPolyDataMapper()
+                            # mapper = vtk.vtkPolyDataMapper()
                         elif "vtk_backend_labeled_luts" in vtkobjects:
                             lut, rg = vtkobjects["vtk_backend_labeled_luts"][i]
-                            mapper = vtk.vtkLabeledContourMapper()
+                            # mapper = vtk.vtkLabeledContourMapper()
 
                         algo_i = ports[i]
                         coloring = None
                         scalarRange = None
 
                         if lut is not None:
-                            if mapper.IsA("vtkPolyDataMapper"):
-                                coloring = 'points'
-                            else:
+                            coloring = 'points'
+
+                            if ports[i].IsA("vtkContourFilter"):
                                 stripper = vtk.vtkStripper()
                                 stripper.SetInputConnection(
                                     ports[i].GetOutputPort())
-                                mapper.SetInputConnection(
-                                    stripper.GetOutputPort())
                                 algo_i = stripper
-                                coloring = 'points'
                                 scalarRange = rg
 
                             if rg[2]:

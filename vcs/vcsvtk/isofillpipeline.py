@@ -29,7 +29,8 @@ class IsofillPipeline(Pipeline2D):
 
         luts = []
         cots = []
-        mappers = []
+        # mappers = []
+        filters = []
         _colorMap = self.getColorMap()
 
         plotting_dataset_bounds = self.getPlottingBounds()
@@ -40,7 +41,7 @@ class IsofillPipeline(Pipeline2D):
             # Ok here we are trying to group together levels can be, a join
             # will happen if: next set of levels continues where one left off
             # AND pattern is identical
-            mapper = vtk.vtkPolyDataMapper()
+            # mapper = vtk.vtkPolyDataMapper()
             lut = vtk.vtkLookupTable()
             cot = vtk.vtkBandedPolyDataContourFilter()
             cot.ClippingOn()
@@ -53,7 +54,6 @@ class IsofillPipeline(Pipeline2D):
             cot.Update()
 
             cots.append(cot)
-            mapper.SetInputConnection(cot.GetOutputPort())
             lut.SetNumberOfTableValues(len(tmpColors[i]))
             for j, color in enumerate(tmpColors[i]):
                 r, g, b, a = self.getColorIndexOrRGBA(_colorMap, color)
@@ -67,50 +67,49 @@ class IsofillPipeline(Pipeline2D):
                 else:
                     lut.SetTableValue(j, 1., 1., 1., 0.)
             luts.append([lut, [0, len(l) - 1, True]])
-            mapper.SetLookupTable(lut)
             minRange = 0
             maxRange = len(l) - 1
             if (i == 0 and self._scalarRange[0] < l[0]):
                 # band 0 is from self._scalarRange[0] to l[0]
                 # we don't show band 0
                 minRange += 1
-            mapper.SetScalarRange(minRange, maxRange)
-            mapper.SetScalarModeToUseCellData()
-            mappers.append(mapper)
+            lut.SetRange(minRange, maxRange)
+            filters.append((cot, lut))
 
         self._resultDict["vtk_backend_luts"] = luts
         if len(cots) > 0:
             self._resultDict["vtk_backend_contours"] = cots
 
         numLevels = len(self._contourLevels)
-        if mappers == []:  # ok didn't need to have special banded contours
-            mapper = vtk.vtkPolyDataMapper()
-            mappers = [mapper]
-            # Colortable bit
-            # make sure length match
-            while len(self._contourColors) < len(self._contourLevels):
-                self._contourColors.append(self._contourColors[-1])
+        if filters == []:
+            raise Exception("Entered isofillpipeline mystery code block!!!")
+            # mapper = vtk.vtkPolyDataMapper()
+            # mappers = [mapper]
+            # # Colortable bit
+            # # make sure length match
+            # while len(self._contourColors) < len(self._contourLevels):
+            #     self._contourColors.append(self._contourColors[-1])
 
-            lut = vtk.vtkLookupTable()
-            lut.SetNumberOfTableValues(numLevels)
-            for i in range(numLevels):
-                r, g, b, a = self.getColorIndexOrRGBA(_colorMap, self._contourColors[i])
-                lut.SetTableValue(i, r / 100., g / 100., b / 100., a / 100.)
+            # lut = vtk.vtkLookupTable()
+            # lut.SetNumberOfTableValues(numLevels)
+            # for i in range(numLevels):
+            #     r, g, b, a = self.getColorIndexOrRGBA(_colorMap, self._contourColors[i])
+            #     lut.SetTableValue(i, r / 100., g / 100., b / 100., a / 100.)
 
-            mapper.SetLookupTable(lut)
-            if numpy.allclose(self._contourLevels[0], -1.e20):
-                lmn = self._min - 1.
-            else:
-                lmn = self._contourLevels[0]
-            if numpy.allclose(self._contourLevels[-1], 1.e20):
-                lmx = self._max + 1.
-            else:
-                lmx = self._contourLevels[-1]
-            mapper.SetScalarRange(lmn, lmx)
-            self._resultDict["vtk_backend_luts"] = [[lut, [lmn, lmx, True]]]
+            # mapper.SetLookupTable(lut)
+            # if numpy.allclose(self._contourLevels[0], -1.e20):
+            #     lmn = self._min - 1.
+            # else:
+            #     lmn = self._contourLevels[0]
+            # if numpy.allclose(self._contourLevels[-1], 1.e20):
+            #     lmx = self._max + 1.
+            # else:
+            #     lmx = self._contourLevels[-1]
+            # mapper.SetScalarRange(lmn, lmx)
+            # self._resultDict["vtk_backend_luts"] = [[lut, [lmn, lmx, True]]]
 
-        if self._maskedDataMapper is not None:
-            mappers.insert(0, self._maskedDataMapper)
+        if self._maskedDataFilter is not None:
+            filters.insert(0, (self._maskedDataFilter, self._maskedLut))
 
         # And now we need actors to actually render this thing
         actors = []
@@ -136,11 +135,11 @@ class IsofillPipeline(Pipeline2D):
 
         vcs2vtk.configureContextArea(area, drawAreaBounds, geom)
 
-        for mapper in mappers:
-            act = vtk.vtkActor()
-            act.SetMapper(mapper)
-            mapper.Update()
-            poly = mapper.GetInput()
+        for filterTuple in filters:
+            filt = filterTuple[0]
+            lut = filterTuple[1]
+            filt.Update()
+            poly = filt.GetOutput()
 
             if not poly:
                 continue
@@ -154,9 +153,6 @@ class IsofillPipeline(Pipeline2D):
                 attrs = poly.GetCellData()
                 data = attrs.GetScalars()
                 if data:
-                    lut = mapper.GetLookupTable()
-                    scalarRange = mapper.GetScalarRange()
-                    lut.SetRange(scalarRange)
                     mappedColors = lut.MapScalars(data, vtk.VTK_COLOR_MODE_DEFAULT, 0)
                     deleteColors = True
                 else:
@@ -175,12 +171,13 @@ class IsofillPipeline(Pipeline2D):
                     mappedColors.FastDelete()
                 area.GetDrawAreaItem().AddItem(item)
 
-            if mapper is self._maskedDataMapper:
-                actors.append([item, self._maskedDataMapper, plotting_dataset_bounds])
+            # if mapper is self._maskedDataFilter:
+            if filt is self._maskedDataFilter:
+                actors.append([item, self._maskedDataFilter, plotting_dataset_bounds])
             else:
                 actors.append([item, plotting_dataset_bounds])
 
-            if mapper is not self._maskedDataMapper:
+            if filt is not self._maskedDataFilter:
                 # Since pattern creation requires a single color, assuming the first
                 c = self.getColorIndexOrRGBA(_colorMap, tmpColors[ct][0])
 
