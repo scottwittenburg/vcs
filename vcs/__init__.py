@@ -52,6 +52,30 @@ import pkg_resources
 vcs_egg_path = pkg_resources.resource_filename(pkg_resources.Requirement.parse("vcs"), "share/vcs")
 
 
+import asyncio
+
+from twisted.internet import asyncioreactor
+# get our reactor installed as early as possible, in case other
+# imports decide to import a reactor and we get the default
+asyncioreactor.install(asyncio.get_event_loop())
+
+from twisted.internet.defer import ensureDeferred, Deferred
+
+def as_future(d):
+    return d.asFuture(asyncio.get_event_loop())
+def as_deferred(f):
+    return Deferred.fromFuture(asyncio.ensure_future(f))
+
+from wslink import server
+from vtkweb.Server import VCSApp
+
+await as_deferred(server.start_webserver(options=args, protocol=VCSApp))
+
+sys.stderr.write('On with the rest of the vcs import\n')
+sys.stderr.flush()
+
+
+
 class bestMatch(object):
     def __setattr__(self, a, v):
         try:
